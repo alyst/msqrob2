@@ -43,7 +43,7 @@
 #' @author Lieven Clement
 #' @export
 
-topFeatures <- function(models, contrast, adjust.method = "BH", sort = TRUE, alpha = 1) {
+topFeatures <- function(models, contrast, adjust.method = "BH", fix_lmm_ddf = FALSE, sort = TRUE, alpha = 1) {
     if (!is(contrast, "matrix")) {
         contrast <- as.matrix(contrast)
     }
@@ -64,10 +64,37 @@ topFeatures <- function(models, contrast, adjust.method = "BH", sort = TRUE, alp
         L = contrast
     ))
     df <- vapply(models, getDfPosterior, numeric(1))
+    ddf_kr <- NULL
+    if (fix_lmm_ddf) {
+        if (!requireNamespace("pbkrtest", quietly = TRUE)) {
+            warning("pbkrtest is required to calculate the denominator DF for fixed effects in linear mixed models.")
+        } else {
+            ddf_kr <- bplapply(models, function(model) {
+                if ("model" %in% names(model@params) && is(model@params$model, "lmerMod")) {
+                    lmm <- model@params$model
+                    lmm_fixeffs <- rownames(vcov(lmm))
+                    L <- matrix(0, nrow = length(lmm_fixeffs), ncol = ncol(contrast),
+                                dimnames = list(lmm_fixeffs, colnames(contrast)))
+                    L[rownames(contrast), ] <- contrast
+                    tryCatch(pbkrtest::get_Lb_ddf(lmm, L = t(L)),
+                             error = function(e) NA_real_)
+                } else {
+                    NA_real_
+                }
+            })
+            ddf_kr <- unlist(ddf_kr, recursive = FALSE, use.names = FALSE)
+            if (all(is.na(ddf_kr))) {
+                ddf_kr <- NULL
+            }
+        }
+    }
     t <- logFC / se
     pval <- pt(-abs(t), df) * 2
     adjPval <- p.adjust(pval, method = adjust.method)
     out <- data.frame(logFC, se, df, t, pval, adjPval)
+    if (!is.null(ddf_kr)) {
+        out$ddf_kr <- ddf_kr
+    }
     if (alpha < 1) {
         signif <- adjPval < alpha
         out <- na.exclude(out[signif, ])
