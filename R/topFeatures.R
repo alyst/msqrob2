@@ -65,6 +65,7 @@ topFeatures <- function(models, contrast, adjust.method = "BH", fix_lmm_ddf = FA
     ))
     df <- vapply(models, getDfPosterior, numeric(1))
     ddf_kr <- NULL
+    ddf_ml1 <- NULL
     if (fix_lmm_ddf) {
         if (!requireNamespace("parameters", quietly = TRUE)) {
             warning("parameters package is required to calculate the denominator DF for fixed effects in linear mixed models.")
@@ -82,6 +83,16 @@ topFeatures <- function(models, contrast, adjust.method = "BH", fix_lmm_ddf = FA
             if (all(is.na(ddf_kr))) {
                 ddf_kr <- NULL
             }
+            ddf_ml1 <- bplapply(models, function(model) {
+                if ("model" %in% names(model@params) && is(model@params$model, "lmerMod")) {
+                    lmm <- model@params$model
+                    tryCatch(parameters::dof_ml1(lmm),
+                             error = function(e) NA_real_)
+                } else {
+                    NA_real_
+                }
+            })
+            ddf_ml1 <- unlist(ddf_ml1, recursive = FALSE, use.names = FALSE)
         }
     }
     t <- logFC / se
@@ -92,6 +103,11 @@ topFeatures <- function(models, contrast, adjust.method = "BH", fix_lmm_ddf = FA
         out$ddf_kr <- ddf_kr
         out$pval_kr <- pt(-abs(t), ddf_kr) * 2
         out$adjPval_kr <- p.adjust(out$pval_kr, method = adjust.method)
+    }
+    if (!is.null(ddf_ml1)) {
+        out$ddf_ml1 <- ddf_ml1
+        out$pval_ml1 <- pt(-abs(t), ddf_ml1) * 2
+        out$adjPval_ml1 <- p.adjust(out$pval_ml1, method = adjust.method)
     }
     if (alpha < 1) {
         signif <- adjPval < alpha
