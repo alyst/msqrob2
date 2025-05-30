@@ -73,7 +73,7 @@ topFeatures <- function(models, contrast, adjust.method = "BH", fix_lmm_ddf = FA
             ddf_kr <- bplapply(models, function(model) {
                 if ("model" %in% names(model@params) && is(model@params$model, "lmerMod")) {
                     lmm <- model@params$model
-                    tryCatch(parameters::dof_kenward(lmm),
+                    tryCatch(min(parameters::dof_kenward(lmm)[rownames(contrast)]),
                              error = function(e) NA_real_)
                 } else {
                     NA_real_
@@ -86,7 +86,7 @@ topFeatures <- function(models, contrast, adjust.method = "BH", fix_lmm_ddf = FA
             ddf_ml1 <- bplapply(models, function(model) {
                 if ("model" %in% names(model@params) && is(model@params$model, "lmerMod")) {
                     lmm <- model@params$model
-                    tryCatch(parameters::dof_ml1(lmm),
+                    tryCatch(min(parameters::dof_ml1(lmm)[rownames(contrast)]),
                              error = function(e) NA_real_)
                 } else {
                     NA_real_
