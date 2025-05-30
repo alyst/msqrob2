@@ -60,7 +60,7 @@ Imports:
     codetools
 Suggests:
     multcomp,
-    pbkrtest,
+    parameters,
     gridExtra,
     knitr,
     BiocStyle,
