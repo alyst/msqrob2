@@ -90,6 +90,8 @@ topFeatures <- function(models, contrast, adjust.method = "BH", fix_lmm_ddf = FA
     out <- data.frame(logFC, se, df, t, pval, adjPval)
     if (!is.null(ddf_kr)) {
         out$ddf_kr <- ddf_kr
+        out$pval_kr <- pt(-abs(t), ddf_kr) * 2
+        out$adjPval_kr <- p.adjust(out$pval_kr, method = adjust.method)
     }
     if (alpha < 1) {
         signif <- adjPval < alpha
